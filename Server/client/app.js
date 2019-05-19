@@ -160,6 +160,82 @@ app.get('/artist', function(req,res){
     });
 });
 
+//get album by name Direkte anfrage an API
+app.get('/album/:nameAlbum/:nameInterpret', function(req,res){
+
+    var typeAlbum = "&album=";
+    var typeInterpret = "album.getinfo&artist=";
+    var nameInterpret = req.params.nameInterpret;
+    var nameAlbum = req.params.nameAlbum;
+
+    var url = main + typeInterpret + nameInterpret + typeAlbum + nameAlbum + keyAndJson;
+    request(url, function (error, response, body) {
+
+        if (!error && response.statusCode == 200) {
+            var apiJSON = JSON.parse(body);
+            var obj = JSON.stringify(apiJSON);
+            fs.writeFile(__dirname+"data/music.json", obj, function(err){
+                if (err) throw err;
+            });
+        }
+
+        fs.readFile('data/music.json','utf8',function(err, rep){
+            if(rep){
+                res.type('json').send(rep);
+            }
+            else {
+                res.status(404).type('text').send('Das Album  ' +req.params.name+' wurde nicht gefunden');
+            }
+        });
+    });
+});
+
+// --- POST REQUESTS --- ///
+
+//user erstellen
+app.post("/user", bodyParser.json(), function(req,res){
+	var userData = req.body;
+	var url = dURL +"/user";
+	var options ={
+		uri:url,
+		method: 'POST',
+		headers: {
+			'Content-Type':'application/json'
+		},
+		json: userData
+	}
+	request(options, function(err,response,body){
+	    res.json(body);
+	});
+});
+
+//create playlist
+app.post("/playlist/:user_id", bodyParser.json(), function(req,res){
+    var userData = req.body;
+    var userid = req.params.user_id;
+    //var userName = data.users[userid].name;
+    var url = dURL +"/playlist/"+req.params.user_id;
+    var options ={
+        uri:url,
+        method: 'POST',
+        headers: {
+            'Content-Type':'application/json'
+        },
+        json: userData
+    }
+    request(options, function(err,response,body){
+        res.json(body);
+        if(body.Fehler === undefined){
+          client.publish('/followUser/' + userid , {text: 'Der User mit der ID ' + userid + ' hat eine neue Playlist erstellt! '})
+          .then(function(){
+            console.log('Message received by server !');
+          }, function(error){
+            console.log('Error on publishing ' + error.message);
+          });
+        }
+    });
+});
+
 // --- DELETE REQUESTS --- ///
 
 //delete playlist
